@@ -28,7 +28,6 @@ type reGPT2Start struct {
 }
 
 // GPT2 will call the inference pipeline on gpt2 models.
-// It is a syncronous wrapper around the async GPT2Start and GPT2Check functions.
 func GPT2(apiKey string, modelSize string, str string, length int, temperature float32, windowMax int) (string, error) {
 	if modelSize != "gpt2" && modelSize != "gpt2-xl" {
 		return "", fmt.Errorf("did not pass valid modelSize argument of 'gpt2' or 'gpt2-xl'")
