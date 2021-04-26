@@ -8,6 +8,10 @@ import (
 	"net/http"
 )
 
+type errJSON struct {
+	Message string
+}
+
 func post(url string, p interface{}, re interface{}) error {
 
 	// Marshal the payload
@@ -21,6 +25,21 @@ func post(url string, p interface{}, re interface{}) error {
 
 	// Catch non-200 status codes
 	if resp.StatusCode != http.StatusOK {
+
+		if resp.StatusCode == 500 {
+			defer resp.Body.Close()
+			bodyBytes, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+			errStruct := errJSON{}
+			err = json.Unmarshal(bodyBytes, &errStruct)
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("booste returned status code %v with message:%s", resp.StatusCode, errStruct.Message)
+		}
+
 		return fmt.Errorf("booste returned status code %v", resp.StatusCode)
 	}
 

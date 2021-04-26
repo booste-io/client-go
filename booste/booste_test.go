@@ -2,33 +2,67 @@ package booste
 
 import (
 	"fmt"
+	"os"
 	"testing"
 )
 
 func TestRun(t *testing.T) {
-
 	// Define arbitrary struct to send in as payloadIn
 	type pIn struct {
-		A string
-		B int
+		String string `json:"string"`
+		Length int    `json:"length"`
 	}
 	p := pIn{
-		A: "This is an arbitrary struct",
-		B: 1,
+		String: "I do not need food.",
+		Length: 100,
 	}
 
-	// Define the payloadOut to be returned
-	// The mock server this is tested against returns json with a single key of "data"
-	type reOut struct {
-		Data string `json:"data"`
-	}
-	re := reOut{}
+	// Define the responseOut to be returned
+	type reOut string
+	re := new(reOut)
 
-	err := Run("fakeAPIKey", "fakeModelKey", &p, &re)
+	apiKey := os.Getenv("API_KEY")
+	modelKey := os.Getenv("MODEL_KEY")
+
+	err := Run(apiKey, modelKey, &p, &re)
 	if err != nil {
 		panic(err)
 	}
 
 	// re is now populated with results
-	fmt.Printf("Out value: %+v\n", re)
+	fmt.Printf("Out value: %+v\n", *re)
+}
+
+func TestGPT2(t *testing.T) {
+	apiKey := os.Getenv("API_KEY")
+	modelSize := "gpt2"
+	str := "hi this is a test for"
+	var temperature float32 = 0.8
+	length := 10
+	windowMax := 50
+
+	outStr, err := GPT2(apiKey, modelSize, str, length, temperature, windowMax)
+	if err != nil {
+		panic(err)
+	}
+
+	// re is now populated with results
+	fmt.Printf("Out value: %+v\n", outStr)
+}
+
+func TestGPT2XL(t *testing.T) {
+	apiKey := os.Getenv("API_KEY")
+	modelSize := "gpt2-xl"
+	str := "hi this is a test for"
+	var temperature float32 = 0.8
+	length := 10
+	windowMax := 50
+
+	outStr, err := GPT2(apiKey, modelSize, str, length, temperature, windowMax)
+	if err != nil {
+		panic(err)
+	}
+
+	// re is now populated with results
+	fmt.Printf("Out value: %+v\n", outStr)
 }

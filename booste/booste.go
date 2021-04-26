@@ -3,6 +3,7 @@ package booste
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 // Run will call the inference pipeline on custom models with the use of a model key.
@@ -25,6 +26,8 @@ func Run(apiKey string, modelKey string, payloadIn interface{}, payloadOut inter
 		if done {
 			break
 		}
+
+		time.Sleep(time.Second)
 	}
 
 	// payloadOut is now populated with returned data, so return no errors
@@ -44,8 +47,9 @@ type reStart struct {
 	TaskID string `json:"taskID"`
 }
 
-// Start will start an async inference task and return a task ID
-func Start(apiKey string, modelKey string, payloadIn interface{}) (string, error) {
+// Start will start an async inference task and return a task ID.
+func Start(apiKey string, modelKey string, payloadIn interface{}) (taskID string, err error) {
+
 	p := pStart{
 		APIKey:          apiKey,
 		ModelKey:        modelKey,
@@ -54,9 +58,9 @@ func Start(apiKey string, modelKey string, payloadIn interface{}) (string, error
 
 	re := reStart{}
 
-	url := "http://localhost:5000/start"
+	url := endpoint + "inference/start"
 
-	err := post(url, &p, &re)
+	err = post(url, &p, &re)
 	if err != nil {
 		return "", err
 	}
@@ -85,10 +89,9 @@ type reCheck struct {
 	Output json.RawMessage `json:"output"` // keep output raw for unmarshalling based off of payloadOut
 }
 
-// Check will check an existing async inference task and marshal the output into payloadOut if successful
-// It returns (true, nil) if the task fully returned
-// It returns (false, nil) if check call ran succesfully but the task has not yet returned into payloadOut
-func Check(apiKey string, taskID string, payloadOut interface{}) (finished bool, err error) {
+// Check will check the status of an existing async inference task. If the task has finished, the task's return values will be marshalled into payloadOut.
+// The "done" boolean return value indicates if the requested async inference task has finished (true) or is still running (false).
+func Check(apiKey string, taskID string, payloadOut interface{}) (done bool, err error) {
 
 	p := pCheck{
 		APIKey: apiKey,
@@ -97,7 +100,7 @@ func Check(apiKey string, taskID string, payloadOut interface{}) (finished bool,
 
 	re := reCheck{}
 
-	url := "http://localhost:5000/check"
+	url := endpoint + "inference/check"
 
 	err = post(url, &p, &re)
 	if err != nil {
