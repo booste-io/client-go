@@ -26,7 +26,7 @@ type reCLIP struct {
 	Message    string `json:"message"`
 }
 
-// CLIP will call the inference pipeline on gpt2 models.
+// CLIP will call the inference pipeline on a CLIP zero-shot image classifier model and return a nested map of similarities.
 func CLIP(apiKey string, prompts []string, images []string) (map[string]map[string]map[string]float32, error) {
 
 	// check lengths of inputs
