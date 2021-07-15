@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	uuid "github.com/google/uuid"
 )
 
 // Run will call the inference pipeline on custom models with the use of a model key.
@@ -34,93 +36,73 @@ func Run(apiKey string, modelKey string, payloadIn interface{}, payloadOut inter
 	return nil
 }
 
-// The payload sent into the Start endpoint
-type pStart struct {
-	APIKey          string      `json:"apiKey"`
-	ModelKey        string      `json:"modelKey"`
-	ModelParameters interface{} `json:"modelParameters"` // send generic payloads.
-}
-
-// The response sent by the Start endpoint
-type reStart struct {
-	Status string `json:"status"`
-	TaskID string `json:"taskID"`
-}
-
 // Start will start an async inference task and return a task ID.
 func Start(apiKey string, modelKey string, payloadIn interface{}) (taskID string, err error) {
 
-	p := pStart{
+	data := inStartV1Data{
 		APIKey:          apiKey,
 		ModelKey:        modelKey,
 		ModelParameters: payloadIn, // name mismatch for backward compat to v1 backend, which expects modelParameters as json
 	}
 
-	re := reStart{}
+	p := inStartV1{
+		ID:      uuid.New().String(),
+		Created: time.Now().Unix(),
+		Data:    data,
+	}
 
-	url := endpoint + "inference/start"
+	re := outStartV1{}
+
+	url := endpoint + "api/task/start/v1/"
 
 	err = post(url, &p, &re)
 	if err != nil {
 		return "", err
 	}
 
-	if re.Status != "started" {
-		return "", fmt.Errorf("inference task did not start")
+	if !re.Success {
+		return "", fmt.Errorf(re.Message)
 	}
 
-	if re.TaskID == "" {
-		return "", fmt.Errorf("inference task returned an empty taskID")
-	}
-
-	return re.TaskID, nil
-}
-
-// The payload sent into the Check endpoint
-type pCheck struct {
-	APIKey string `json:"apiKey"`
-	TaskID string `json:"taskID"`
-}
-
-// The response sent by the Check endpoint
-type reCheck struct {
-	Status string          `json:"status"`
-	TaskID string          `json:"taskID"`
-	Output json.RawMessage `json:"output"` // keep output raw for unmarshalling based off of payloadOut
+	return re.Data.TaskID, nil
 }
 
 // Check will check the status of an existing async inference task. If the task has finished, the task's return values will be marshalled into payloadOut.
 // The "done" boolean return value indicates if the requested async inference task has finished (true) or is still running (false).
 func Check(apiKey string, taskID string, payloadOut interface{}) (done bool, err error) {
 
-	p := pCheck{
-		APIKey: apiKey,
+	data := inCheckV1Data{
 		TaskID: taskID,
 	}
 
-	re := reCheck{}
+	p := inCheckV1{
+		ID:       uuid.New().String(),
+		Created:  time.Now().Unix(),
+		LongPoll: true,
+		Data:     data,
+	}
 
-	url := endpoint + "inference/check"
+	re := outCheckV1{}
+
+	url := endpoint + "api/task/check/v1/"
 
 	err = post(url, &p, &re)
 	if err != nil {
 		return false, err
 	}
 
-	// Handle running tasks, where the Check call ran without error, but the task is not done
-	if re.Status == "started" || re.Status == "pending" || re.Status == "retrying" {
-		return false, nil
+	if !re.Success {
+		return false, fmt.Errorf(re.Message)
 	}
 
-	// Handle failed tasks with an error
-	if re.Status == "failed" {
-		return false, fmt.Errorf("inference task failed")
+	if re.Data.TaskStatus == "Done" {
+		err = json.Unmarshal(re.Data.TaskOut, payloadOut)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
 	}
 
-	// Else re.Status == "finished"
-	err = json.Unmarshal(re.Output, payloadOut)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return false, nil
+
 }

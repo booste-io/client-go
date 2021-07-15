@@ -9,10 +9,10 @@ var endpoint string
 
 func init() {
 	// Set endpoint to whatever is in env
-	switch env := os.Getenv("BoosteURL"); env {
+	switch env := os.Getenv("BOOSTE_URL"); env {
 	case "":
 		// Prod case, zero value
-		endpoint = "http://booste-corporation-v3-flask.zeet.app/"
+		endpoint = "http://api.booste.io/"
 	case "local":
 		// Standard localdev case
 		endpoint = "http://localhost/"

@@ -14,11 +14,13 @@ func TestRun(t *testing.T) {
 	}
 	p := pIn{
 		String: "I do not need food.",
-		Length: 100,
+		Length: 10,
 	}
 
 	// Define the responseOut to be returned
-	type reOut string
+	type reOut struct {
+		String string `json:"output"`
+	}
 	re := new(reOut)
 
 	apiKey := os.Getenv("API_KEY")
@@ -30,7 +32,7 @@ func TestRun(t *testing.T) {
 	}
 
 	// re is now populated with results
-	fmt.Printf("Out value: %+v\n", *re)
+	fmt.Printf("Out value: %+v\n", re.String)
 }
 
 func TestGPT2(t *testing.T) {
@@ -43,6 +45,7 @@ func TestGPT2(t *testing.T) {
 
 	outStr, err := GPT2(apiKey, modelSize, str, length, temperature, windowMax)
 	if err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 

@@ -21,12 +21,6 @@ type pGPT2Start struct {
 	WindowMax   int     `json:"windowMax"`
 }
 
-// The response sent by the Start endpoint
-type reGPT2Start struct {
-	Status string `json:"Status"`
-	TaskID string `json:"TaskID"`
-}
-
 // GPT2 will call the inference pipeline on gpt2 models.
 func GPT2(apiKey string, modelSize string, str string, length int, temperature float32, windowMax int) (string, error) {
 	if modelSize != "gpt2" && modelSize != "gpt2-xl" {
@@ -38,12 +32,15 @@ func GPT2(apiKey string, modelSize string, str string, length int, temperature f
 		return "", err
 	}
 
-	var re []string
+	var re struct {
+		Output []string `json:"output"`
+	}
 
 	// Poll check until done
 	done := false
+	outStr := ""
 	for {
-		done, err = Check(apiKey, taskID, &re)
+		done, outStr, err = gpt2Check(apiKey, taskID, &re)
 		if err != nil {
 			return "", err
 		}
@@ -54,9 +51,13 @@ func GPT2(apiKey string, modelSize string, str string, length int, temperature f
 		time.Sleep(time.Second)
 	}
 
-	outStr := strings.Join(re[:], " ")
-
 	return outStr, nil
+}
+
+// The response sent by the Start endpoint
+type reStart struct {
+	Status string `json:"status"`
+	TaskID string `json:"taskID"`
 }
 
 // Start will start an async inference task and return a task ID.
@@ -90,4 +91,42 @@ func gpt2Start(apiKey string, modelSize string, str string, length int, temperat
 	}
 
 	return re.TaskID, nil
+}
+
+// The "done" boolean return value indicates if the requested async inference task has finished (true) or is still running (false).
+func gpt2Check(apiKey string, taskID string, payloadOut interface{}) (done bool, outStr string, err error) {
+
+	type inGPT2Check struct {
+		TaskID string `json:"TaskID"`
+		APIKey string `json:"apiKey"`
+	}
+
+	p := inGPT2Check{
+		TaskID: taskID,
+		APIKey: apiKey,
+	}
+
+	type outGPT2Check struct {
+		Status string   `json:"Status"`
+		Output []string `json:"Output"`
+	}
+
+	re := outGPT2Check{}
+
+	url := endpoint + "inference/pretrained/gpt2/async/check/v2"
+
+	err = post(url, &p, &re)
+	if err != nil {
+		return false, "", err
+	}
+
+	if re.Status == "Finished" {
+		outStr := strings.Join(re.Output[:], " ")
+		if err != nil {
+			return false, "", err
+		}
+		return true, outStr, nil
+	}
+
+	return false, "", nil
 }
